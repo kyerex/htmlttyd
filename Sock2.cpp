@@ -468,6 +468,9 @@ enum Sock2::SockRet Sock2::waitsock(int tim)
 
 enum Sock2::SockRet Sock2::getwait(char **data, uint32_t *len,int tim)
 {
+    if (st == HTMLSOCK) {
+        return NOT_READY;
+    }
     if (READY != waitsock(tim)) {
         return NOT_READY;
     }
@@ -478,6 +481,9 @@ enum Sock2::SockRet Sock2::get(char **data, uint32_t *len)
 {
     enum SockRet ret;
 
+    if (st == HTMLSOCK) {
+        return NOT_READY;
+    }
     *data=NULL;
     if (READY != get_len(len)){ //assume full length is avaiable
         slog->info("Error on Get len\n");
@@ -561,8 +567,19 @@ void Sock2::DoHandShake()
     char *bp;
     int n,len;
 
-    //pend 5 up to seconds
-    if (READY != waitsock(5)){
+    //pend 1 seconds then close
+    if (READY != waitsock(1)){
+        close();
+#ifdef LOG_ON
+        slog->wlog("**** Connect with no Handshake ****\n");
+#endif
+        // connect with no request
+        //figure out if can turn off in SPA page reponse header
+        fd =-2;
+        return;
+    }
+    bp=buf;n=1;
+    if (READY != get_datax(bp,1)) {
 bad_handshake:
         close();
 #ifdef LOG_ON
@@ -570,14 +587,10 @@ bad_handshake:
 #endif
         return;
     }
-    bp=buf;n=1;
-    if (READY != get_datax(bp,1)) {
-        goto bad_handshake;
-    }
     if (*bp == 'S' || *bp == 'L'){
         while (*bp != '\0') {
             ++bp;++n;
-            if (n==2048) {
+           if (n==2048) {
                 goto bad_handshake;
             }
             if (READY != get_datax(bp,1)) {
@@ -599,7 +612,6 @@ bad_handshake:
                 goto bad_handshake;
             }
         }
-
     }
     if (n>4 && buf[n-1] == '\0') {
         len=-1; // check for LONG or SHORT handshake
@@ -640,13 +652,22 @@ bad_handshake:
             return;
         } // else fall thru to check for websock handshake
     }
+    buf[n]='\0';
     if (n < 32) {
         goto bad_handshake;
     }
-    buf[n]='\0';
-    if (memcmp(buf,"GET",3) != 0) goto bad_handshake;
-    if (memcmp(&buf[n-4],"\r\n\r\n",4) !=0 ) goto bad_handshake;
-    if (strstr (buf,"Upgrade: websocket") == 0) goto bad_handshake;
+    if (strstr (buf,"Upgrade: websocket") == 0) {
+        if (memcmp(buf,"GET / HTTP/1.1\r\n",16) == 0) {
+            st=HTMLSOCK;
+            mlength=16777215;
+            return;
+        }
+        if (memcmp(buf,"GET /favicon.ico HTTP/1.1\r\n",27) == 0) {
+            slog->wlog(buf);
+        }
+        goto bad_handshake;
+    }
+    if (memcmp(buf,"GET / HTTP/1.1\r\n",16) != 0) goto bad_handshake;
     if (strstr (buf,"Connection: Upgrade") == 0) goto bad_handshake;
     if (strstr (buf,"Sec-WebSocket-Version: 13") == 0) goto bad_handshake;
     if ((bp=strstr (buf,"Sec-WebSocket-Key:")) == 0) goto bad_handshake;
@@ -759,6 +780,9 @@ enum Sock2::SockRet Sock2::put_len(uint32_t dlen)
                 }
             }
             return put_data(tbuf,(char *)bp-tbuf);
+        case HTMLSOCK:
+            sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %u\r\n\r\n",dlen);
+            return put_data(tbuf,strlen(tbuf));
     }
     return READY;
 }

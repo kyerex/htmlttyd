@@ -8,6 +8,7 @@ OBJS=	do.o \
 	TTYDevice.o \
 	Sock2.o \
 	hdcon.o \
+	getlogin.o \
 	ServerLog.o \
 	htmlttyd.o
 

@@ -42,11 +42,13 @@ A javascript WEBSOCK client side is required for client side WEBSOCK connection.
 #define SHORTLEN 0
 #define LONGLEN 1
 #define WEBSOCK 2
+#define HTMLSOCK 3
 
 class Sock2{
 
 public:
     enum SockRet{CLOSED,NOT_READY,ERR,READY};
+    int st;
 
 private:
 #ifdef TGOSWIN32
@@ -60,7 +62,6 @@ private:
     int offset;
     unsigned char *buffer;
     enum {INVALID,READING,SERVING}state;
-    int st;
     uint32_t mlength;
 
     void DoHandShake(); //Server side  handshake after accept

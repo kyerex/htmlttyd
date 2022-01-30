@@ -67,9 +67,12 @@ int main(int argc,char *argv[])
         }
         //accept connection
         c.open(s); //Sock2 also handles connection type protocol from client
+        if (c.fd == -2) {
+            continue;
+        }
         if (c.fd == INVALID_SOCKET) {
             slog->error((char *)"open failed ??\n");
-            break;
+            continue;
         }
 #ifdef DEBUGGING
         HDCon(argv[0],&c); // pass connected Sock2 to HDCon

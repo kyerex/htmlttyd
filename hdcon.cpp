@@ -7,6 +7,7 @@
 #include <shadow.h>
 #include <pwd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <malloc.h>
 #include <string.h>
 #include <ctype.h>
@@ -21,6 +22,7 @@
 #include <net/if.h> 
 #include <netinet/in.h>
 #include <utmp.h>
+#include <fcntl.h>
 
 #include "Sock2.h"
 #include "TTYDevice.h"
@@ -29,6 +31,7 @@
 
 int bDebug=1;
 
+uint32_t getlogin(char **h);
 extern ServerLog *slog;
 
 int readsock(Sock2 *s,char *bp, uint32_t *len)
@@ -65,6 +68,16 @@ int HDCon(char *argv0,Sock2 *s)
     char *nbp;
     int send_ksa=0; // 1 if sending a ksa for a read gui
 
+    char *h;
+
+    if (s->st == HTMLSOCK) {
+        len=getlogin(&h);
+        s->put(h,len);
+        free((void *)h);
+        sleep(2);
+        s->close();
+        return 0;
+    }
     namelen=sizeof(name);
     if ( getpeername(s->fd,(struct sockaddr *)&name,&namelen) ) {
         goto bad_init;
