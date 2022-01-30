@@ -1,9 +1,7 @@
 #include "gsys.h"
 #include "Sock2.h"
 #include "do.h"
-#ifdef LOG_ON
 #include "ServerLog.h"
-#endif
 #include <stdio.h>
 extern "C" {
 #ifdef TGOSLINUX
@@ -77,9 +75,7 @@ int Sock2::cleanup ()
 }
 #endif
 
-#ifdef LOG_ON
 extern ServerLog *slog;
-#endif
 
 Sock2::~Sock2()
 {
@@ -92,6 +88,7 @@ Sock2::~Sock2()
 Sock2::Sock2()
 {
     fd=INVALID_SOCKET;
+    st=NOTDEFINED;
     buffer=NULL;
 #ifdef TGOSWIN32
     startup();
@@ -155,10 +152,8 @@ void Sock2::open(const char *host,int port,int t,uint32_t m)
 
     addr.sin_port = htons(port);
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-#ifdef LOG_ON
         slog->abort("Sock2::open(char *host,int port) "
                     "Error return from socket(AF_INET, SOCK_STREAM, 0)");
-#endif
         fd=INVALID_SOCKET;
         return;
     }
@@ -187,23 +182,19 @@ void Sock2::open(const char *host,int port,int t,uint32_t m)
                 }
                 closesocket(fd);
                 fd=INVALID_SOCKET;
-#ifdef LOG_ON
                 slog->abort("Sock2::open(char *host,int port,int sizeof_len) "
                             "Error return from(10 retries): "
                             "connect(fd, (struct sockaddr *)&addr, "
                 "sizeof(addr)");
-#endif
                 return;
             }
             else {
                 closesocket(fd);
                 fd=INVALID_SOCKET;
-#ifdef LOG_ON
                 slog->abort("Sock2::open(char *host,int port,int sizeof_len) "
                             "Error return from "
                             "connect(fd, (struct sockaddr *)&addr, "
                 "sizeof(addr)");
-#endif
                 return;
             }
         }
@@ -238,10 +229,8 @@ void Sock2::open(int port,char *inter)
 
     if ((inaddr = inet_addr(inter)) == INADDR_NONE) {
         fd=INVALID_SOCKET;
-#ifdef LOG_ON
         slog->abort("Sock2::open(int port,int sizeof_len,char *inter) "
                     "error return from inet_addr(inter) - bad interface name");
-#endif
         return;
     }
     open(port, inaddr);
@@ -258,10 +247,8 @@ void Sock2::open(int port,unsigned int sadd)
     addr.sin_port = htons(port);
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         fd=INVALID_SOCKET;
-#ifdef LOG_ON
         slog->abort("Sock2::open(int port,int sizeof_len,unsigned long sadd) "
                     "error return from socket(AF_INET, SOCK_STREAM, 0)");
-#endif
         return;
     }
     
@@ -276,11 +263,9 @@ void Sock2::open(int port,unsigned int sadd)
     if ( 0 != bind(fd,(struct sockaddr *)&addr,sizeof(addr)) ) {
         closesocket(fd);
         fd=INVALID_SOCKET;
-#ifdef LOG_ON
         slog->abort("Sock2::open(int port,int sizeof_len,unsigned long sadd) "
                     "error return from bind(fd,(struct sockaddr *)&addr,"
             "sizeof(addr))");
-#endif
         return;
     }
     buffer=NULL;
@@ -311,20 +296,16 @@ void Sock2::open(const Sock2 &s)
 
     fd=INVALID_SOCKET;
     if (s.fd == INVALID_SOCKET || s.state != SERVING) {
-#ifdef LOG_ON
         slog->abort("Sock2::open(const Sock &s) "
                     "attempt to accept call from now serving object");
-#endif
         return;
     }
     fromlen=sizeof(from);
     fd=accept(s.fd,(struct sockaddr *)&from,&fromlen);
     if (INVALID_SOCKET == fd) {
-#ifdef LOG_ON
         slog->error("Sock2::open(const Sock &s) "
                     "error return from accept(s.fd,(struct sockaddr *)"
             "&from,&fromlen))");
-#endif
         return;
     }
     // set to non-blocking
@@ -339,7 +320,6 @@ void Sock2::open(const Sock2 &s)
     length = 0;
     offset = 0;
     state  = INVALID;
-    DoHandShake();
     return;
 }
 
@@ -392,10 +372,8 @@ enum Sock2::SockRet Sock2::get_data(char *rdata, uint32_t rlen)
     int n;
 
     if (fd < 0) {
-#ifdef LOG_ON
         slog->abort("Sock2::getdata(char *rdata, int *rdlen) "
                 "Sock object not open");
-#endif
         return(ERR);
     }
     if (state == INVALID) {
@@ -417,11 +395,9 @@ enum Sock2::SockRet Sock2::get_data(char *rdata, uint32_t rlen)
                 if (err == EWOULDBLOCK || err == EINTR) {
                     return(NOT_READY);
                 }
-#ifdef LOG_ON
                 slog->error("Sock2::getdata(char *rdata, int *rdlen) "
                              "error returned "
                              "from recv(fd, (char *)&buffer[offset], length,0)");
-#endif
                 state=INVALID;
                 return ERR;
             }
@@ -433,10 +409,8 @@ enum Sock2::SockRet Sock2::get_data(char *rdata, uint32_t rlen)
         return READY;
     }
     state = INVALID;
-#ifdef LOG_ON
     slog->abort("Sock::getdata(char *rdata, int *rdlen) "
                 "logic error can't be here");
-#endif
     return ERR;
 }    // Sock2::get_data
 
@@ -522,10 +496,8 @@ enum Sock2::SockRet Sock2::put_data(char *data,uint32_t dlen)
     int wait_time=10000; // Give up time slot 10000 times on stalled output
 
     if (fd < 0) {
-#ifdef LOG_ON
         slog->abort("Sock2::put(const unsigned short *data) "
                     "Sock object not open");
-#endif
         return(ERR);
     }
     len=(int)dlen;
@@ -546,10 +518,8 @@ enum Sock2::SockRet Sock2::put_data(char *data,uint32_t dlen)
                 --wait_time;
                 continue;;
             }
-#ifdef LOG_ON
             slog->error("Sock2::put(const unsigned short *data) "
                         "error return send(fd, (char *)&wbuf[offset], len,0)");
-#endif
             return(ERR); // lost connection
         }
         len    -= n;
@@ -570,9 +540,7 @@ void Sock2::DoHandShake()
     //pend 1 seconds then close
     if (READY != waitsock(1)){
         close();
-#ifdef LOG_ON
         slog->wlog("**** Connect with no Handshake ****\n");
-#endif
         // connect with no request
         //figure out if can turn off in SPA page reponse header
         fd =-2;
@@ -582,9 +550,7 @@ void Sock2::DoHandShake()
     if (READY != get_datax(bp,1)) {
 bad_handshake:
         close();
-#ifdef LOG_ON
         slog->error((char *)"Hand Shake error aborting connection");
-#endif
         return;
     }
     if (*bp == 'S' || *bp == 'L'){
@@ -710,9 +676,7 @@ void Sock2::DoCHandShake()
     if (n != (int)len) {
 bad_chandshake:
         close();
-#ifdef LOG_ON
         slog->error((char *)"Client Hand Shake error aborting connection");
-#endif
         return;
     }
     //pend 5 seconds
@@ -736,10 +700,8 @@ enum Sock2::SockRet Sock2::put_len(uint32_t dlen)
     unsigned char *bp,*bp2;
 
     if (dlen > mlength) {
-#ifdef LOG_ON
         slog->error("Sock2::SockRet Sock2::put_len(uint32_t dlen)"
                         "Data Len greater than mlength");
-#endif
         return ERR;
     }
     s=htons((unsigned short)dlen);
@@ -783,6 +745,11 @@ enum Sock2::SockRet Sock2::put_len(uint32_t dlen)
         case HTMLSOCK:
             sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %u\r\n\r\n",dlen);
             return put_data(tbuf,strlen(tbuf));
+        default:
+            slog->abort("enum Sock2::SockRet Sock2::put_len(uint32_t dlen) "
+                "logic error can't be here");
+            // no return
+
     }
     return READY;
 }
@@ -857,6 +824,10 @@ enum Sock2::SockRet Sock2::get_len(uint32_t *dlen)
             mask[3]=tbuf[3];
             *dlen=len;
             return READY;
+        default:
+            slog->abort("Sock2::get_len(uint32_t *dlen) "
+                "logic error can't be here");
+            // no return
     }
     return READY;
 }
