@@ -4,6 +4,7 @@ It adds has 3 types of lengths/protocols
 1. SHORTLEN - netshort prefixs all data
 2. LONGLEN - netlong prefixs all data
 3. WEBSOCK - Websock protocol prefixes data
+4. HTMLSOCK - SPA Page get
 
 Once connectted the data transfer:
 put,get and getwait are identical
@@ -39,10 +40,12 @@ A javascript WEBSOCK client side is required for client side WEBSOCK connection.
 #define GETERR WSAGetLastError()
 #endif
 
-#define SHORTLEN 0
-#define LONGLEN 1
-#define WEBSOCK 2
-#define HTMLSOCK 3
+#define NOTDEFINED 0
+#define SHORTLEN 1
+#define LONGLEN 2
+#define WEBSOCK 3
+#define HTMLSOCK 4
+#define HTMLFAVI 5
 
 class Sock2{
 
@@ -64,14 +67,12 @@ private:
     enum {INVALID,READING,SERVING}state;
     uint32_t mlength;
 
-    void DoHandShake(); //Server side  handshake after accept
     void DoCHandShake(); //Client side  handshake after accept
     enum SockRet put_len(uint32_t dlen);
     enum SockRet put_data(char *data,uint32_t dlen);
     enum SockRet get_datax(char *d,uint32_t l);
     enum SockRet get_data(char *rdata, uint32_t rlen);
     enum SockRet get_len(uint32_t *dlen);
-    enum SockRet waitsock(int tim);
     void apply_mask(char *obp,uint32_t len);
 
 public:
@@ -80,6 +81,8 @@ public:
     Sock2();
     ~Sock2();
 
+    enum SockRet waitsock(int tim);
+    void DoHandShake(); //Server side  handshake after accept
     void open(const char *host,int port);
     void open(const char *host,int port,int t);
     void open(const char *host,int port,int t,uint32_t m);

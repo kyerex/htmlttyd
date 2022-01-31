@@ -530,6 +530,7 @@ enum Sock2::SockRet Sock2::put_data(char *data,uint32_t dlen)
 
 const char *connected="connected";
 
+// should be called by child
 void Sock2::DoHandShake()
 {
     char buf[2048];
@@ -537,45 +538,34 @@ void Sock2::DoHandShake()
     char *bp;
     int n,len;
 
-    //pend 1 seconds then close
-    if (READY != waitsock(1)){
-        close();
-        slog->wlog("**** Connect with no Handshake ****\n");
-        // connect with no request
-        //figure out if can turn off in SPA page reponse header
-        fd =-2;
-        return;
-    }
+    st=NOTDEFINED; // should already be NOTDEFINED
     bp=buf;n=1;
     if (READY != get_datax(bp,1)) {
-bad_handshake:
-        close();
-        slog->error((char *)"Hand Shake error aborting connection");
         return;
     }
     if (*bp == 'S' || *bp == 'L'){
         while (*bp != '\0') {
             ++bp;++n;
            if (n==2048) {
-                goto bad_handshake;
+                return;;
             }
             if (READY != get_datax(bp,1)) {
-                goto bad_handshake;
+                return;
             }
         }
     }
     else {
         if (READY != get_datax(bp+1,31)) {
-            goto bad_handshake;
+            return;
         }
         bp=&buf[32];n=32;
         while (memcmp(&buf[n-4],"\r\n\r\n",4) !=0 ) {
             if (READY != get_datax(bp,1)) {
-                goto bad_handshake;
+                return;
             }
             ++bp;++n;
             if (n==2048) {
-                goto bad_handshake;
+                return;
             }
         }
     }
@@ -613,14 +603,14 @@ bad_handshake:
             len=strlen(buf)+1;
             n = send(fd,buf,len,0);
             if (n != (int)len) {
-                goto bad_handshake;
+                st=NOTDEFINED;
             }
             return;
         } // else fall thru to check for websock handshake
     }
     buf[n]='\0';
     if (n < 32) {
-        goto bad_handshake;
+        return;
     }
     if (strstr (buf,"Upgrade: websocket") == 0) {
         if (memcmp(buf,"GET / HTTP/1.1\r\n",16) == 0) {
@@ -629,14 +619,16 @@ bad_handshake:
             return;
         }
         if (memcmp(buf,"GET /favicon.ico HTTP/1.1\r\n",27) == 0) {
-            slog->wlog(buf);
+            st=HTMLFAVI;
+            mlength=16777215;
+            return;
         }
-        goto bad_handshake;
+        return;
     }
-    if (memcmp(buf,"GET / HTTP/1.1\r\n",16) != 0) goto bad_handshake;
-    if (strstr (buf,"Connection: Upgrade") == 0) goto bad_handshake;
-    if (strstr (buf,"Sec-WebSocket-Version: 13") == 0) goto bad_handshake;
-    if ((bp=strstr (buf,"Sec-WebSocket-Key:")) == 0) goto bad_handshake;
+    if (memcmp(buf,"GET / HTTP/1.1\r\n",16) != 0) return;
+    if (strstr (buf,"Connection: Upgrade") == 0) return;
+    if (strstr (buf,"Sec-WebSocket-Version: 13") == 0) return;
+    if ((bp=strstr (buf,"Sec-WebSocket-Key:")) == 0) return;
     strcpy(key,bp+18);
     bp=key;while (*bp==' ')++bp;
     strcpy(buf,bp);
@@ -655,7 +647,7 @@ bad_handshake:
     strcat(buf,"\r\n\r\n");
     len=(unsigned int)strlen(buf);
     n = send(fd,buf,len,0);
-    if (n != (int)len) goto bad_handshake;
+    if (n != (int)len) return;
     st=WEBSOCK;
     mlength=16777215;
 }
@@ -744,6 +736,9 @@ enum Sock2::SockRet Sock2::put_len(uint32_t dlen)
             return put_data(tbuf,(char *)bp-tbuf);
         case HTMLSOCK:
             sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %u\r\n\r\n",dlen);
+            return put_data(tbuf,strlen(tbuf));
+        case HTMLFAVI:
+            sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: image/gif; charset=utf-8\r\nContent-Length: %u\r\n\r\n",dlen);
             return put_data(tbuf,strlen(tbuf));
         default:
             slog->abort("enum Sock2::SockRet Sock2::put_len(uint32_t dlen) "

@@ -66,7 +66,7 @@ int main(int argc,char *argv[])
             break;
         }
         //accept connection
-        c.open(s); //Sock2 also handles connection type protocol from client
+        c.open(s); //child of fork must call DoHandShake
         if (c.fd == -2) {
             continue;
         }

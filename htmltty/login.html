@@ -3,6 +3,8 @@
 <head>
 <title>Login</title>
 
+<!--This is loaded only when login.html is loaded from a file-->
+<!--The favicon.ico comes from htty.gif when loaded from server-->
 <link rel="shortcut icon" type="image/gif"
  href="data:image/gif;base64,R0lGODlhIAAhAKU2AAAAABYWFhwcHCoqKi4uLjIyMjg4OD09PUBAQEJ     
  CQlFRUVhYWFxcXGxsbHd3d3h4eISEhIWFhYaGho6OjpSUlJiYmJmZmZ2dnaGhoaSkpKenp6qqqq6ur     
@@ -15,6 +17,13 @@
 
 <script>
 var T_G=new Object(); // the only global
+
+function callinit()
+{
+    // these 32 chars get replaced with the server ip and port
+    //must have         012345678901234567890123456789012345678901
+    init(" "," "," "," ","127.0.0.1:5001",                        "HTML");
+}
 </script>
 
 <script SRC="MenuObj.JS"></script>
@@ -31,7 +40,7 @@ var T_G=new Object(); // the only global
 
 </head>
 
-<body onload='init(" "," "," "," ","192.168.1.72:5001","HTML")'>
+<body onload='callinit()'>
 
 <audio src="data:audio/wav;base64,UklGRqQOAABXQVZFZm10IBAAAAABAAEAESsAABEr	
 AAABAAgAZGF0YYAOAACAgICAgICAgICAgICAgICAgICAgICAf3JNgKZ6OZWUrYN/co20s5	

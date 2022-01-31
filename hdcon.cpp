@@ -31,6 +31,7 @@
 
 int bDebug=1;
 
+uint32_t getfile(const char *fname,char **h);
 uint32_t getlogin(char **h);
 extern ServerLog *slog;
 
@@ -65,19 +66,65 @@ int HDCon(char *argv0,Sock2 *s)
     int nready,master,maxfd;
     struct sockaddr_in name;
     socklen_t namelen;
-    char *nbp;
+    char *nbp,*bp;
+    struct sockaddr *sa;
+    char my_address[32];
     int send_ksa=0; // 1 if sending a ksa for a read gui
 
     char *h;
 
+    len=1024;
+    sa=(struct sockaddr *)buf;
+    if (0 == getsockname(s->fd,sa,&len)) {
+        if (sa->sa_family == AF_INET) {
+            memset(my_address,' ',32);
+            sprintf(my_address,",\"%u.%u.%u.%u:%u\",",(uint8_t)sa->sa_data[2],(uint8_t)sa->sa_data[3],
+                (uint8_t)sa->sa_data[4],(uint8_t)sa->sa_data[5],(uint8_t)sa->sa_data[0]*256 + (uint8_t)sa->sa_data[1]);
+            my_address[strlen(my_address)]=' ';
+        }
+        else {
+            my_address[0]='\0';
+        }
+    }
+    
+    if (Sock2::READY != s->waitsock(120)) {
+        slog->info("No Handshake Received - exiting");
+        s->close();
+        return 0;
+    }
+
+    s->DoHandShake();
+
+    if (s->st == NOTDEFINED) {
+        slog->info("Invalid HandShake");
+        s->close();
+        return 0;
+    }
+
     if (s->st == HTMLSOCK) {
         len=getlogin(&h);
+        bp=strstr(h,",\"127.0.0.1:5001");
+        if (bp != NULL && my_address[0] !='\0') {
+            memcpy(bp,my_address,32);
+        }
         s->put(h,len);
         free((void *)h);
         sleep(2);
         s->close();
         return 0;
     }
+
+    if (s->st == HTMLFAVI) {
+        len=getfile("htmltty/htty.gif",&h);
+        if (h != NULL) {
+            s->put(h,len);
+            free((void *)h);
+            sleep(2);
+        }
+        s->close();
+        return 0;
+    }
+    
     namelen=sizeof(name);
     if ( getpeername(s->fd,(struct sockaddr *)&name,&namelen) ) {
         goto bad_init;
