@@ -533,13 +533,12 @@ const char *connected="connected";
 // should be called by child
 void Sock2::DoHandShake()
 {
-    char buf[2048];
     char key[2048];
     char *bp;
     int n,len;
 
     st=NOTDEFINED; // should already be NOTDEFINED
-    bp=buf;n=1;
+    bp=hsbuf;n=1;
     if (READY != get_datax(bp,1)) {
         return;
     }
@@ -558,8 +557,8 @@ void Sock2::DoHandShake()
         if (READY != get_datax(bp+1,31)) {
             return;
         }
-        bp=&buf[32];n=32;
-        while (memcmp(&buf[n-4],"\r\n\r\n",4) !=0 ) {
+        bp=&hsbuf[32];n=32;
+        while (memcmp(&hsbuf[n-4],"\r\n\r\n",4) !=0 ) {
             if (READY != get_datax(bp,1)) {
                 return;
             }
@@ -569,12 +568,12 @@ void Sock2::DoHandShake()
             }
         }
     }
-    if (n>4 && buf[n-1] == '\0') {
+    if (n>4 && hsbuf[n-1] == '\0') {
         len=-1; // check for LONG or SHORT handshake
-        if (memcmp(buf,"SHORT",5) == 0) {
+        if (memcmp(hsbuf,"SHORT",5) == 0) {
             st=SHORTLEN;
-            if (n > 5 && buf[5] == ',') {
-                len=atoi(&buf[6]);
+            if (n > 5 && hsbuf[5] == ',') {
+                len=atoi(&hsbuf[6]);
                 if (len < 128 || len >65535) {
                     len=65535;
                 }
@@ -584,10 +583,10 @@ void Sock2::DoHandShake()
 
             }
         }
-        if (memcmp(buf,"LONG",4) == 0) {
+        if (memcmp(hsbuf,"LONG",4) == 0) {
             st=LONGLEN;
-            if (n > 4 && buf[4] == ',') {
-                len=atoi(&buf[5]);
+            if (n > 4 && hsbuf[4] == ',') {
+                len=atoi(&hsbuf[5]);
                 if (len < 128 || len >16777215) {
                     len=16777215;
                 }
@@ -599,54 +598,49 @@ void Sock2::DoHandShake()
         }
         if ( len != -1) {
             mlength=(uint32_t)len;
-            strcpy(buf,connected);
-            len=strlen(buf)+1;
-            n = send(fd,buf,len,0);
+            strcpy(hsbuf,connected);
+            len=strlen(hsbuf)+1;
+            n = send(fd,hsbuf,len,0);
             if (n != (int)len) {
                 st=NOTDEFINED;
             }
             return;
         } // else fall thru to check for websock handshake
     }
-    buf[n]='\0';
+    hsbuf[n]='\0';
     if (n < 32) {
         return;
     }
-    if (strstr (buf,"Upgrade: websocket") == 0) {
-        if (memcmp(buf,"GET / HTTP/1.1\r\n",16) == 0) {
+    if (strstr (hsbuf,"Upgrade: websocket") == 0) {
+        if (memcmp(hsbuf,"GET /",4) == 0) {
             st=HTMLSOCK;
             mlength=16777215;
-            return;
         }
-        if (memcmp(buf,"GET /favicon.ico HTTP/1.1\r\n",27) == 0) {
-            st=HTMLFAVI;
-            mlength=16777215;
-            return;
-        }
+        //st="NOTDEFINED"
         return;
     }
-    if (memcmp(buf,"GET / HTTP/1.1\r\n",16) != 0) return;
-    if (strstr (buf,"Connection: Upgrade") == 0) return;
-    if (strstr (buf,"Sec-WebSocket-Version: 13") == 0) return;
-    if ((bp=strstr (buf,"Sec-WebSocket-Key:")) == 0) return;
+    if (memcmp(hsbuf,"GET / HTTP/1.1\r\n",16) != 0) return;
+    if (strstr (hsbuf,"Connection: Upgrade") == 0) return;
+    if (strstr (hsbuf,"Sec-WebSocket-Version: 13") == 0) return;
+    if ((bp=strstr (hsbuf,"Sec-WebSocket-Key:")) == 0) return;
     strcpy(key,bp+18);
     bp=key;while (*bp==' ')++bp;
-    strcpy(buf,bp);
-    bp=buf;while(*bp > ' ')++bp;
+    strcpy(hsbuf,bp);
+    bp=hsbuf;while(*bp > ' ')++bp;
     *bp='\0';
-    strcpy(key,buf);
+    strcpy(key,hsbuf);
     strcat(key,(char *)"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-    do_sha1 (key,(unsigned int)strlen(key),buf);
-    do_hta64((byt *)buf,20,(byt *)key,(uint32_t *)&len);
+    do_sha1 (key,(unsigned int)strlen(key),hsbuf);
+    do_hta64((byt *)hsbuf,20,(byt *)key,(uint32_t *)&len);
     key[len]='\0';
-    strcpy(buf,"HTTP/1.1 101 Switching Protocols\r\n");
-    strcat(buf,"Upgrade: websocket\r\n");
-    strcat(buf,"Connection: Upgrade\r\n");
-    strcat(buf,"Sec-WebSocket-Accept: ");
-    strcat(buf,key);
-    strcat(buf,"\r\n\r\n");
-    len=(unsigned int)strlen(buf);
-    n = send(fd,buf,len,0);
+    strcpy(hsbuf,"HTTP/1.1 101 Switching Protocols\r\n");
+    strcat(hsbuf,"Upgrade: websocket\r\n");
+    strcat(hsbuf,"Connection: Upgrade\r\n");
+    strcat(hsbuf,"Sec-WebSocket-Accept: ");
+    strcat(hsbuf,key);
+    strcat(hsbuf,"\r\n\r\n");
+    len=(unsigned int)strlen(hsbuf);
+    n = send(fd,hsbuf,len,0);
     if (n != (int)len) return;
     st=WEBSOCK;
     mlength=16777215;
@@ -734,16 +728,12 @@ enum Sock2::SockRet Sock2::put_len(uint32_t dlen)
                 }
             }
             return put_data(tbuf,(char *)bp-tbuf);
-        case HTMLSOCK:
-            sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %u\r\n\r\n",dlen);
-            return put_data(tbuf,strlen(tbuf));
-        case HTMLFAVI:
-            sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: image/gif; charset=utf-8\r\nContent-Length: %u\r\n\r\n",dlen);
-            return put_data(tbuf,strlen(tbuf));
+
         default:
-            slog->abort("enum Sock2::SockRet Sock2::put_len(uint32_t dlen) "
+            // HTMLSOCK handles len elsewhere
+            slog->info("enum Sock2::SockRet Sock2::put_len(uint32_t dlen) "
                 "logic error can't be here");
-            // no return
+            return NOT_READY;
 
     }
     return READY;

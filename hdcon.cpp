@@ -102,29 +102,40 @@ int HDCon(char *argv0,Sock2 *s)
     }
 
     if (s->st == HTMLSOCK) {
-        len=getlogin(&h);
-        bp=strstr(h,",\"127.0.0.1:5001");
-        if (bp != NULL && my_address[0] !='\0') {
-            memcpy(bp,my_address,32);
+        if (memcmp(s->hsbuf,"GET / HTTP/1.1\r\n",16) == 0) {
+            len=getlogin(&h);
+            if (h != NULL ){
+                bp=strstr(h,",\"127.0.0.1:5001");
+                if (bp != NULL && my_address[0] !='\0') {
+                    memcpy(bp,my_address,32);
+                }
+                sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %u\r\n\r\n",len);
+                s->put_data(tbuf,strlen(tbuf));
+                s->put_data(h,len);
+                free((void *)h);
+                sleep(2);
+            }
+            s->close();
+            return 0;
         }
-        s->put(h,len);
-        free((void *)h);
-        sleep(2);
+        if (memcmp(s->hsbuf,"GET /favicon.ico HTTP/1.1\r\n",27) == 0) {
+            len=getfile("htmltty/htty.gif",&h);
+            if (h != NULL) {
+                sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: image/gif; charset=utf-8\r\nContent-Length: %u\r\n\r\n",len);
+                s->put_data(tbuf,strlen(tbuf));
+                s->put_data(h,len);
+                free((void *)h);
+                sleep(2);
+            }
+            s->close();
+            return 0;
+        }
+        // send 404
+        slog->info("do not recognize request");
+        slog->info(s->hsbuf);
         s->close();
         return 0;
     }
-
-    if (s->st == HTMLFAVI) {
-        len=getfile("htmltty/htty.gif",&h);
-        if (h != NULL) {
-            s->put(h,len);
-            free((void *)h);
-            sleep(2);
-        }
-        s->close();
-        return 0;
-    }
-    
     namelen=sizeof(name);
     if ( getpeername(s->fd,(struct sockaddr *)&name,&namelen) ) {
         goto bad_init;

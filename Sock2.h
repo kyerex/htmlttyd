@@ -45,7 +45,6 @@ A javascript WEBSOCK client side is required for client side WEBSOCK connection.
 #define LONGLEN 2
 #define WEBSOCK 3
 #define HTMLSOCK 4
-#define HTMLFAVI 5
 
 class Sock2{
 
@@ -69,7 +68,6 @@ private:
 
     void DoCHandShake(); //Client side  handshake after accept
     enum SockRet put_len(uint32_t dlen);
-    enum SockRet put_data(char *data,uint32_t dlen);
     enum SockRet get_datax(char *d,uint32_t l);
     enum SockRet get_data(char *rdata, uint32_t rlen);
     enum SockRet get_len(uint32_t *dlen);
@@ -77,12 +75,14 @@ private:
 
 public:
     SOCKET fd;
+    char hsbuf[2048]; //used by handshake left for caller on HTMLSOCK
 
     Sock2();
     ~Sock2();
 
     enum SockRet waitsock(int tim);
     void DoHandShake(); //Server side  handshake after accept
+    enum SockRet put_data(char *data,uint32_t dlen); // let client handle html connection
     void open(const char *host,int port);
     void open(const char *host,int port,int t);
     void open(const char *host,int port,int t,uint32_t m);
