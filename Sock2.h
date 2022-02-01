@@ -1,10 +1,12 @@
+
 /*
 Sock2 is an upgrade from Sock 
 It adds has 3 types of lengths/protocols
 1. SHORTLEN - netshort prefixs all data
 2. LONGLEN - netlong prefixs all data
 3. WEBSOCK - Websock protocol prefixes data
-4. HTMLSOCK - SPA Page get
+and a user HTML connection
+4. HTMLSOCK - the user handles this connection htmlttyd does a Single Page App get
 
 Once connectted the data transfer:
 put,get and getwait are identical
@@ -15,6 +17,7 @@ The class provide server side for SHORTLEN, LONGLEN and WEBSOCK
 and client side for SHORTLEN and LONGLEN.
 A javascript WEBSOCK client side is required for client side WEBSOCK connection.
 */
+
 #ifndef SOCK2_H_INCLUDED
 #define SOCK2_H_INCLUDED
 
