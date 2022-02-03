@@ -28,6 +28,7 @@
 #include "TTYDevice.h"
 #include "ServerLog.h"
 #include "wspackets.h"
+#include "spa.h"
 
 int bDebug=1;
 
@@ -103,30 +104,35 @@ int HDCon(char *argv0,Sock2 *s)
 
     if (s->st == HTMLSOCK) {
         if (memcmp(s->hsbuf,"GET / HTTP/1.1\r\n",16) == 0) {
-            len=getlogin(&h);
-            if (h != NULL ){
-                bp=strstr(h,",\"127.0.0.1:5001");
-                if (bp != NULL && my_address[0] !='\0') {
-                    memcpy(bp,my_address,32);
-                }
-                sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %u\r\n\r\n",len);
-                s->put_data(tbuf,strlen(tbuf));
-                s->put_data(h,len);
-                free((void *)h);
-                sleep(2);
+            h=(char *)alloca(spa_file_len+1);
+            memcpy(h,spa_file,spa_file_len+1);
+            len=spa_file_len;
+            bp=strstr(h,",\"127.0.0.1:5001");
+            if (bp != NULL && my_address[0] !='\0') {
+                memcpy(bp,my_address,32);
             }
+            sprintf(tbuf,
+"HTTP/1.1 200 OK\r\n\
+Content-Type: text/html; charset=utf-8\r\n\
+Cache-Control: no-cache\r\n\
+Content-Length: %u\r\n\r\n",len);
+            s->put_data(tbuf,strlen(tbuf));
+            s->put_data(h,len);
+            sleep(2);
             s->close();
-            return 0;
+            return 0; //child exit
         }
         if (memcmp(s->hsbuf,"GET /favicon.ico HTTP/1.1\r\n",27) == 0) {
-            len=getfile("htmltty/htty.gif",&h);
-            if (h != NULL) {
-                sprintf(tbuf,"HTTP/1.1 200 OK\r\nContent-Type: image/gif; charset=utf-8\r\nContent-Length: %u\r\n\r\n",len);
-                s->put_data(tbuf,strlen(tbuf));
-                s->put_data(h,len);
-                free((void *)h);
-                sleep(2);
-            }
+            len=fav_file_len;
+            h=(char *)fav_file;
+            sprintf(tbuf,
+"HTTP/1.1 200 OK\r\n\
+Content-Type: image/gif; charset=utf-8\r\n\
+Cache-Control: no-cache\r\n\
+Content-Length: %u\r\n\r\n",len);
+            s->put_data(tbuf,strlen(tbuf));
+            s->put_data(h,len);
+            sleep(2);
             s->close();
             return 0;
         }
