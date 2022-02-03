@@ -26,7 +26,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>        /* fstat() */
 
-ServerLog *slog = new ServerLog(""); // send log to console
+ServerLog *slog;
 
 extern int HDCon(char *,Sock2 *);
 
@@ -40,17 +40,23 @@ int main(int argc,char *argv[])
     char buf[1000];
 
     if (argc < 2) {
-	slog->info((char *)"Must specify port #\n");
-	return 0;
+        port=5001;
     }
-    port=atoi(argv[1]);
-    if (port <1024 || port > 49149) {
-	slog->info ((char *)"Invalid port #\n");
-	return 0;
+    else {
+        port=atoi(argv[1]);
+        if (port <1024 || port > 49149) {
+            port=5001;
+        }
+    }
+    if (argc < 3) {
+        slog = new ServerLog(""); // send log to console
+    }
+    else {
+        slog = new ServerLog(argv[2]); // send log to file
     }
     s.open(port); // serve port
     
-    sprintf(buf,"Serving Port:%d ",port);
+    sprintf(buf,"\n\n\nServing Port:%d ",port);
     slog->info(buf);
     signal(SIGCHLD,SIG_IGN);
     while (1) {

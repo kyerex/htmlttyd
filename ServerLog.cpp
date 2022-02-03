@@ -36,7 +36,7 @@ void ServerLog::wlog(const char *s)
 		printf("%s",s);
 	}
 	else{
-		log=fopen("sm32server.log","a");
+		log=fopen(logname,"a");
 		if (log==0){
 			::abort();
 		}

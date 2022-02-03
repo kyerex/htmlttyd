@@ -21,15 +21,16 @@ int main(int argc,char *argv[])
     int cfd;
     char buf[1024];
     char *hbp;
+    size_t n;
 
     cfd=creat("spa.cpp",0666);
 
     strcpy(buf,"/* created by loadspa */\n\n");
-    write(cfd,buf,strlen(buf));
+    n=write(cfd,buf,strlen(buf));
     strcpy(buf,"#include \"spa.h\"\n\n");
-    write(cfd,buf,strlen(buf));
+    n=write(cfd,buf,strlen(buf));
     sprintf(buf,"#define LLEN %d\n\n",LLEN);
-    write(cfd,buf,strlen(buf));
+    n=write(cfd,buf,strlen(buf));
     
     len=getlogin(&hbp);;
     if (hbp == NULL) {
@@ -37,7 +38,7 @@ int main(int argc,char *argv[])
         abort(); //spa load failed
     }
     sprintf(buf,"const unsigned int spa_file_len = %u;\n\n",len);
-    write(cfd,buf,strlen(buf));
+    n=write(cfd,buf,strlen(buf));
 
     write_array("spa_file",hbp,cfd);
     free(hbp);
@@ -48,7 +49,7 @@ int main(int argc,char *argv[])
         abort(); //image load failed
     }
     sprintf(buf,"const unsigned int fav_file_len = %u;\n\n",len);
-    write(cfd,buf,strlen(buf));
+    n=write(cfd,buf,strlen(buf));
 
     write_array("fav_file",hbp,cfd);
     free(hbp);
@@ -61,23 +62,24 @@ void write_array(const char *name,char *bp,int cfd)
 {
     int i,p;
     char buf[1024];
+    size_t n;
 
     sprintf(buf,"const char %s[LLEN]={",name);
-    write(cfd,buf,strlen(buf));
+    n=write(cfd,buf,strlen(buf));
 
     i=0;p=0;
     while (*bp != 0) {
         sprintf(buf,"'\\x%X'",(int)*bp);
         if (i == LLEN-1) {
             strcat(buf,"};\n");
-            write(cfd,buf,strlen(buf));
+            n=write(cfd,buf,strlen(buf));
             sprintf(buf,"const char %s_%d[LLEN]={",name,p);
-            write(cfd,buf,strlen(buf));
+            n=write(cfd,buf,strlen(buf));
             i=0;++p;++bp;
         }
         else {
             strcat(buf,",");
-            write(cfd,buf,strlen(buf));
+            n=write(cfd,buf,strlen(buf));
             ++bp;++i;
         }
     }
@@ -85,11 +87,11 @@ void write_array(const char *name,char *bp,int cfd)
         strcpy(buf,"'\\x0'");
         if (i == LLEN-1) {
             strcat(buf,"};\n\n\n");
-            write(cfd,buf,strlen(buf));
+            n=write(cfd,buf,strlen(buf));
         }
         else {
             strcat(buf,",");
-            write(cfd,buf,strlen(buf));
+            n=write(cfd,buf,strlen(buf));
         }
         ++i;
     }

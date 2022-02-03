@@ -1,6 +1,6 @@
 CC=	gcc
 CPP=	g++
-CPPFLAGS= -g $(OPTIMIZE) $(TARGET) -Wall -I.
+CPPFLAGS= -g -O -Wall -I.
 
 
 OBJS=	do.o \
@@ -19,10 +19,10 @@ all:
 	(make wss)
 
 wss:	$(OBJS) $(LIBS) 
-	g++ -o htmlttyd $(OBJS) -lm -lutil $(LIBS2)  
+	g++ -g -O -Wall -o htmlttyd $(OBJS) -lm -lutil $(LIBS2)  
 
 loadspa:
-	g++ -g -O0 -Wall -o loadspa loadspa.cpp
+	g++ -g -O -o loadspa loadspa.cpp
 
 clean:
 	@rm -f *.o
