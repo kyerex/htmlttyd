@@ -8,17 +8,25 @@ OBJS=	do.o \
 	TTYDevice.o \
 	Sock2.o \
 	hdcon.o \
-	getlogin.o \
+	spa.o \
 	ServerLog.o \
 	htmlttyd.o
 
-
-all:	wss
+all:
+	@rm -f loadspa
+	(make loadspa)
+	@./loadspa
+	(make wss)
 
 wss:	$(OBJS) $(LIBS) 
 	g++ -o htmlttyd $(OBJS) -lm -lutil $(LIBS2)  
 
+loadspa:
+	g++ -g -O0 -Wall -o loadspa loadspa.cpp
+
 clean:
 	@rm -f *.o
 	@rm -f htmlttyd
+	@rm -f loadspa
+	@rm -f spa.cpp
 
