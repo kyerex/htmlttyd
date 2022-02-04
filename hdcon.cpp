@@ -32,8 +32,6 @@
 
 int bDebug=1;
 
-uint32_t getfile(const char *fname,char **h);
-uint32_t getlogin(char **h);
 extern ServerLog *slog;
 
 int readsock(Sock2 *s,char *bp, uint32_t *len)
@@ -104,9 +102,9 @@ int HDCon(char *argv0,Sock2 *s)
 
     if (s->st == HTMLSOCK) {
         if (memcmp(s->hsbuf,"GET / HTTP/1.1\r\n",16) == 0) {
-            h=(char *)alloca(spa_file_len+1);
-            memcpy(h,spa_file,spa_file_len+1);
-            len=spa_file_len;
+            len=spa_html_len;
+            h=(char *)alloca(len);
+            memcpy(h,&spa_html_start,len);
             bp=strstr(h,",\"127.0.0.1:5001");
             if (bp != NULL && my_address[0] !='\0') {
                 memcpy(bp,my_address,32);
@@ -123,8 +121,8 @@ Content-Length: %u\r\n\r\n",len);
             return 0; //child exit
         }
         if (memcmp(s->hsbuf,"GET /favicon.ico HTTP/1.1\r\n",27) == 0) {
-            len=fav_file_len;
-            h=(char *)fav_file;
+            len=htty_gif_len;
+            h=&htty_gif_start;
             sprintf(tbuf,
 "HTTP/1.1 200 OK\r\n\
 Content-Type: image/gif; charset=utf-8\r\n\

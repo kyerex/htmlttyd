@@ -1,5 +1,8 @@
 
-extern const unsigned int fav_file_len;
-extern const unsigned int spa_file_len;
-extern const char fav_file[];
-extern const char spa_file[];
+extern "C" {
+extern unsigned int spa_html_len;
+extern char spa_html_start;
+
+extern unsigned int htty_gif_len;
+extern char htty_gif_start;
+}

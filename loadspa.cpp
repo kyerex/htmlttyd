@@ -9,11 +9,11 @@
 #include <stdint.h>
 #include <sys/select.h>
 
-#define LLEN 128
+#define LLEN 16
 
 uint32_t getfile(const char *fname,char **h);
 uint32_t getlogin(char **h);
-void write_array(const char *name,char *bp,int cfd);
+void write_array(const char *name,char *bp,int cfd,unsigned int len);
 
 int main(int argc,char *argv[])
 {
@@ -23,13 +23,20 @@ int main(int argc,char *argv[])
     char *hbp;
     size_t n;
 
-    cfd=creat("spa.cpp",0666);
+    cfd=creat("spa.s",0666);
 
     strcpy(buf,"/* created by loadspa */\n\n");
     n=write(cfd,buf,strlen(buf));
-    strcpy(buf,"#include \"spa.h\"\n\n");
+    strcpy(buf,"\t.globl\tspa_html_len\n");
     n=write(cfd,buf,strlen(buf));
-    sprintf(buf,"#define LLEN %d\n\n",LLEN);
+    strcpy(buf,"\t.globl\tspa_html_start\n");
+    n=write(cfd,buf,strlen(buf));
+    strcpy(buf,"\t.globl\thtty_gif_len\n");
+    n=write(cfd,buf,strlen(buf));
+    strcpy(buf,"\t.globl\thtty_gif_start\n");
+    n=write(cfd,buf,strlen(buf));
+
+    strcpy(buf,"\t.data\n");
     n=write(cfd,buf,strlen(buf));
     
     len=getlogin(&hbp);;
@@ -37,10 +44,15 @@ int main(int argc,char *argv[])
         printf("Could not load SPA from login.html\n");
         abort(); //spa load failed
     }
-    sprintf(buf,"const unsigned int spa_file_len = %u;\n\n",len);
+    strcpy(buf,"\t.align 4\n");
+    n=write(cfd,buf,strlen(buf));
+    strcpy(buf,"spa_html_len:\n");
     n=write(cfd,buf,strlen(buf));
 
-    write_array("spa_file",hbp,cfd);
+    sprintf(buf,"\t.long\t%u\n\n",len);
+    n=write(cfd,buf,strlen(buf));
+ 
+    write_array("spa_html_start",hbp,cfd,len+1); // include trail 0
     free(hbp);
 
     len=getfile("htmltty/htty.gif",&hbp);
@@ -48,45 +60,57 @@ int main(int argc,char *argv[])
         printf("Could not load SPA favicon from htty.gif\n");
         abort(); //image load failed
     }
-    sprintf(buf,"const unsigned int fav_file_len = %u;\n\n",len);
+    strcpy(buf,"\t.align 4\n");
+    n=write(cfd,buf,strlen(buf));
+    strcpy(buf,"htty_gif_len:\n");
     n=write(cfd,buf,strlen(buf));
 
-    write_array("fav_file",hbp,cfd);
+    sprintf(buf,"\t.long\t%u\n\n",len);
+    n=write(cfd,buf,strlen(buf));
+
+    write_array("htty_gif_start",hbp,cfd,len);
     free(hbp);
     close(cfd);
 
     return 0;
 }
 
-void write_array(const char *name,char *bp,int cfd)
+void write_array(const char *name,char *bpx,int cfd,unsigned int len)
 {
-    int i,p;
+    int i;
     char buf[1024];
     size_t n;
+    unsigned char *bp;
 
-    sprintf(buf,"const char %s[LLEN]={",name);
+    bp=(unsigned char *)bpx;
+
+    strcpy(buf,"\t.align 1\n");
+    n=write(cfd,buf,strlen(buf));
+    sprintf(buf,"%s:\n",name);
     n=write(cfd,buf,strlen(buf));
 
-    i=0;p=0;
-    while (*bp != 0) {
-        sprintf(buf,"'\\x%X'",(int)*bp);
+    i=0;
+    strcpy(buf,"\t.byte\t");
+    n=write(cfd,buf,strlen(buf));
+    while (len != 0) {
+        sprintf(buf,"%u",(unsigned int)*bp);
         if (i == LLEN-1) {
-            strcat(buf,"};\n");
+            strcat(buf,"\n");
             n=write(cfd,buf,strlen(buf));
-            sprintf(buf,"const char %s_%d[LLEN]={",name,p);
+            strcpy(buf,"\t.byte\t");
             n=write(cfd,buf,strlen(buf));
-            i=0;++p;++bp;
+            i=0;++bp;--len;
         }
         else {
             strcat(buf,",");
             n=write(cfd,buf,strlen(buf));
-            ++bp;++i;
+            ++bp;++i;--len;
         }
     }
     while (i < LLEN) {
-        strcpy(buf,"'\\x0'");
+        strcpy(buf,"0");
         if (i == LLEN-1) {
-            strcat(buf,"};\n\n\n");
+            strcat(buf,"\n\n\n");
             n=write(cfd,buf,strlen(buf));
         }
         else {
@@ -189,5 +213,6 @@ uint32_t getfile(const char *fname,char **h)
     }
 
     close(fdx);
+    *(*h+stx.st_size)='\0';
     return stx.st_size;
 }
