@@ -705,8 +705,11 @@ function echo_char(achar)
         s=s+'text-decoration: underline;';
     }
     if (bbxc.high_intensity) {
-    	s=s+'font-weight: bold;';
+    	s=s+'font-weight: bolder;';
     }
+	else {
+    	s=s+'font-weight: lighter;';
+	}
     s=s+' color:#'+
         bbxc.fc_rgb+'; background-color:#'+bbxc.bc_rgb+';">';
     s=s+bbxc.achar;
@@ -957,8 +960,11 @@ function get_wdata_line(i)
         	s=s+'text-decoration: underline;';
         }
  	    if (bbxc.high_intensity) {
-    		s=s+'font-weight: bold;';
+    		s=s+'font-weight: bolder;';
     	}
+		else {
+    		s=s+'font-weight: lighter;';
+		}
         s=s+' color:#'+
         bbxc.fc_rgb+'; background-color:#'+bbxc.bc_rgb+';">'+
         bbxc.achar+'</span>';

@@ -25,7 +25,8 @@ function XtermWrite(pk)
         clearTimeout(this.Xt_THandle);
         this.Xt_timer=false;
     }
-    let s=pk.data;
+    //let s=pk.data;
+    let s=decodeURIComponent(escape(pk.data));
     //tohex(pk.data);
     this.sm32_error=0;
     while (s.length != 0) {
