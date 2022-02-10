@@ -30,9 +30,14 @@
 #include "wspackets.h"
 #include "spa.h"
 
+int wait_writeres(Sock2 *s);
+char *findstr(const char *hs,uint32_t len,const char *s);
+
 int bDebug=1;
 
 extern ServerLog *slog;
+TTYDevice *tty0=NULL;
+int send_ksa=0; // 1 if sending a ksa for a read gui
 
 int readsock(Sock2 *s,char *bp, uint32_t *len)
 {
@@ -51,12 +56,12 @@ int readsock(Sock2 *s,char *bp, uint32_t *len)
 
 int HDCon(char *argv0,Sock2 *s)
 {
-    TTYDevice *tty0=NULL;
     struct pc2_initpacket *pi;
     struct pc2_loginres *lr;
     struct pc2_schar *ps;
     struct pc2_write *pw;
-    uint32_t len;
+    char *big_pw;
+    uint32_t len,len2,len3;
     char buf[1024];
     char tbuf[MAXTRANSFER];
     char obuf[MAXTRANSFER]; 
@@ -68,7 +73,6 @@ int HDCon(char *argv0,Sock2 *s)
     char *nbp,*bp;
     struct sockaddr *sa;
     char my_address[32];
-    int send_ksa=0; // 1 if sending a ksa for a read gui
 
     char *h;
 
@@ -95,7 +99,8 @@ int HDCon(char *argv0,Sock2 *s)
     s->DoHandShake();
 
     if (s->st == NOTDEFINED) {
-        slog->info("Invalid HandShake");
+        //slog->info("Invalid HandShake");
+        //always browser with extra connection
         s->close();
         return 0;
     }
@@ -213,6 +218,7 @@ bad_init:
     slog->info(tbuf);
     maxfd=s->fd;
     if (master > maxfd)maxfd=master;
+    big_pw=0;
     while (1) {
         FD_ZERO(&readset);
         FD_SET(s->fd, &readset);
@@ -220,7 +226,7 @@ bad_init:
         FD_ZERO(&errset);
         FD_SET(s->fd, &errset);
         FD_SET(master,&errset);
-        //pend forever wait for data from htmltty and slave sid of ptty
+        //pend forever wait for data from htmltty and slave side of ptty
         nready = select(maxfd + 1, &readset, 0, &errset, 0); // add error set on the 2 file descriptors
         if (s->fd == INVALID_SOCKET || nready == -1) {
             slog->abort((char *)"Error return from select");
@@ -240,6 +246,62 @@ bad_init:
                 s->close();
                 exit(0);
             }
+            if (big_pw != 0) {
+                len2=len;
+                if (len3 < len2) {
+                    len2=len3;
+                }
+                memcpy(nbp,tbuf,len2);
+                nbp=nbp+len2;
+                len3=len3-len2;
+                len=len-len2;
+                if (len3 == 0) {
+                    nbp=nbp-3;
+                    if (memcmp(nbp,"*\033\\",3) != 0) {
+                        slog->abort("bad big_pw");
+                        return 0;
+                    }
+                    ++nbp;
+                    if (Sock2::READY != s->put(big_pw,nbp-big_pw) ){
+                        slog->abort((char *)"Error writing to websocket");
+                        return 0;
+                    }
+                    free (big_pw);
+                    big_pw=0;
+                    if (1 != wait_writeres(s)) {
+                        return 0;
+                    }
+                }
+                if (len == 0) {
+                    continue;
+                }
+                nbp=nbp+2;
+                memcpy(tbuf,nbp,len);
+            }
+            tbuf[len]='\0';
+            if ((bp=findstr(tbuf,len,"\033]98;*")) != 0 ) {
+                nbp=bp+6,len3=0;
+                len2=len - (nbp-tbuf); // len2 len left after *
+                if (0 == get_uint32_t((unsigned char **)&nbp,&len2,&len3)) {
+                    //nbp and len2 get updated by get_unit32_t
+                    len3=len3+3;        //3 for * esc backslash
+                    len=bp-tbuf;        //len in front of osc 98
+                    big_pw=(char *)malloc(len3);
+                    if (big_pw == 0) {
+                        slog->abort("memory error");
+                    }
+                    memcpy(big_pw,nbp,len2);
+                    nbp=big_pw+len2;  // nbp is next to copy to
+                    len3=len3-len2;         // len3 is the bytes left to come
+                    if (len == 0) {
+                        continue;
+                    }
+                }
+                else {
+                    slog->info("get_unit32_t failed");
+                }
+                //else fall thru and send len bytes from tbuf
+            }
             pw=(struct pc2_write *)obuf;
             memset(pw,0,sizeof(*pw));
             pw->dlenl=len;
@@ -254,38 +316,10 @@ bad_init:
                 slog->abort((char *)"Error writing to websocket");
                 return 0;
             }
-            while (1) {
-                readsock(s,tbuf,&len);
-                if (send_ksa) {
-                    send_ksa=0;
-                    if (tbuf[len-1] != '*') { // check this is an object
-                        slog->abort((char *)"HTMLTerminal sent bad packet?");
-                        return 0;
-                    }
-                    tty0->TDwrite(tbuf,len);
-                    continue;
-                }
-                if ( deserialize((byt *)tbuf,len-1) ) {
-                    slog->abort((char *)"unable to deserialize write result packet");
-                    return 0;
-                }
-                ps=(struct pc2_schar *)tbuf;
-                if (ps->type == pc2schar) {
-                    if (ps->ikey == 30000) {
-                        send_ksa=1;
-                        continue; //read object
-                    }
-                    // keyboard input
-                    tty0->TDwrite(ps->data,ps->dlenl);
-                    continue;
-                }
-                if (ps->type == pc2writeres) {
-                    break;
-                }
-                slog->abort((char *)"Bad Write reponse");
-                return 0;
+            if (wait_writeres(s)) {
+                continue;
             }
-            continue;
+            return 0;
         }
         if (FD_ISSET(s->fd,&readset)) {
             if (readsock(s,tbuf,&len)) {
@@ -326,4 +360,68 @@ bad_init:
     }
 
     return 0;
+}
+
+int wait_writeres(Sock2 *s)
+{
+    struct pc2_schar *ps;
+    char tbuf[MAXTRANSFER];
+    uint32_t len;
+
+    while (1) {
+        readsock(s,tbuf,&len);
+        if (send_ksa) {
+            send_ksa=0;
+            if (tbuf[len-1] != '*') { // check this is an object
+                slog->abort((char *)"HTMLTerminal sent bad packet?");
+                return 0;
+            }
+            tty0->TDwrite(tbuf,len);
+            continue;
+        }
+        if ( deserialize((byt *)tbuf,len-1) ) {
+            slog->abort((char *)"unable to deserialize write result packet");
+            return 0;
+        }
+        ps=(struct pc2_schar *)tbuf;
+        if (ps->type == pc2schar) {
+            if (ps->ikey == 30000) {
+                send_ksa=1;
+                continue; //read object
+            }
+            // keyboard input
+            tty0->TDwrite(ps->data,ps->dlenl);
+            continue;
+        }
+        if (ps->type == pc2writeres) {
+            break;
+        }
+        slog->abort((char *)"Bad Write reponse");
+        return 0;
+    }
+
+    return 1;
+}
+
+// hs haystack can contain 0x00 s needle cannot
+char *findstr(const char *hs,uint32_t len,const char *s)
+{
+    char *bp,*bpend;
+    uint32_t lens;
+
+    lens=(uint32_t)strlen(s);
+    if (len < lens) {
+        return 0;
+    }
+
+    bp=(char *)hs;
+    bpend=bp+len-lens;
+    while (bp <= bpend) {
+        if (memcmp(bp,s,lens)== 0) {
+            return bp;
+        }
+        ++bp;
+    }
+    return 0;
+
 }

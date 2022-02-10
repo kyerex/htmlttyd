@@ -179,7 +179,17 @@ function XtermWrite(pk)
                         w.document.title=s1;
                         continue;
                     case 98:
-                        //s1 has write gui packet
+                        if (s1.slice(0,1) == "*") {
+                            //should rarely get here
+                            //s1 has an * +  a 8 byte len, then write gui packet
+                            s1=s1.slice(1);
+                            i=Number(s1.slice(0,8));
+                            console.log("Got long html len="+i);
+                            s1=s1.slice(9);
+                            if (i != s1.length-1) {
+                                console.log("Bad Length write gui i="+i+" len="+s.length);
+                            }
+                        }
                         p2=new Pc2Packet(s1);
                         if (p2.data == undefined){
                             console.log("Bad Write Gui");
@@ -191,7 +201,7 @@ function XtermWrite(pk)
                         continue;
                     case 99:
                         //s1 has a SM32 mnemonic
-                        console.log("SM32 Mnemonic:"+s1);
+                        //console.log("SM32 Mnemonic:"+s1);
                         this.SM32Mnemonic(s1);
                         cwin=T_G.bw.windows[T_G.bw.cw];
                         continue;
