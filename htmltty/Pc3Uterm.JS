@@ -234,6 +234,8 @@ Pc3Uterm.prototype.add_rbuf=add_rbuf;
 Pc3Uterm.prototype.send_ksa=send_ksa;
 Pc3Uterm.prototype.do_rm=do_rm;
 Pc3Uterm.prototype.do_resize=do_resize;
+Pc3Uterm.prototype.click_con=click_con;
+Pc3Uterm.prototype.menu_click=menu_click;
 
 
 Pc3Uterm.prototype.max_mnem_len=16;

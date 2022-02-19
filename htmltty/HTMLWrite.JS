@@ -41,6 +41,9 @@ function HTMLWrite(p)
                     else {
                         w.scrollTo(0,0);
                     }
+                    w.document.body.addEventListener("mouseover", function(event) {
+                        T_G.bw.m.mKillMenuMaybe();
+                    });	 
                     w.document.close();        //close should make elements available
                 } /* else we are working with already loaded window */
                 if(p.data.type == "loadform") {
@@ -314,13 +317,7 @@ function HTMLWrite(p)
 function Click(ele)
 {
     let o=this.o;
-    let cwin=T_G.bw.windows[T_G.bw.cw];
-    if (cwin.dialog_w == null) {
-        w=cwin.w;
-    }
-    else {
-        w=cwin.dialog_w;
-    }
+
     if (ele == undefined) {
         o["NO_ELEMENT"]="NO_ELEMENT"
     }
@@ -331,6 +328,27 @@ function Click(ele)
         else {
             o[ele.id]="CLICKED";
         }
+    }
+    this.click_con()
+}
+
+function menu_click(c)
+{
+    let o=this.o;
+
+    o["MENU_CLICKED"]=""+c;
+    this.click_con();
+}
+
+function click_con()
+{
+    let o=this.o;
+    let cwin=T_G.bw.windows[T_G.bw.cw];
+    if (cwin.dialog_w == null) {
+        w=cwin.w;
+    }
+    else {
+        w=cwin.dialog_w;
     }
     if (o.type == "formdata") {
         // this is a link or something out side the form

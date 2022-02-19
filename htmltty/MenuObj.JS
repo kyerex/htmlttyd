@@ -423,16 +423,22 @@ function mClickItem(i)
 
 function mSendItemCode(c)
 {
-	var pu=T_G.pu;
-	if (pu.sm32_mode) {
-		pu.sm32_error=pu.e_end_of_file;
-		pu.EndRead();
-		pu.load_rbuf(""+c+"\r");
+	let pu=T_G.pu;
+	let cwin=T_G.bw.windows[T_G.bw.cw];
+	if (cwin.html_mode) {
+		pu.menu_click(c);
 	}
 	else {
-		pu.add_rbuf("\x18"); "send ctrl X"
-		//sleep(1000);
-		pu.add_rbuf(""+c+"\r");
+		if (pu.sm32_mode) {
+			pu.sm32_error=pu.e_end_of_file;
+			pu.EndRead();
+			pu.load_rbuf(""+c+"\r");
+		}
+		else {
+			pu.add_rbuf("\x18"); "send ctrl X"
+			//sleep(1000);
+			pu.add_rbuf(""+c+"\r");
+		}
 	}
 
 }
