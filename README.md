@@ -11,6 +11,25 @@ It can be executed in su mode by
 
 1st param port 2nd log name.
 
+all code is mine except in do.cpp
+base64 encoding from:
+https://github.com/zhicheng/base64
+/* This is a public domain base64 implementation written by WEI Zhicheng. */
+
+and sha-1 encoding from:
+https://gist.github.com/jrabbit/1042021
+/* ================ sha1.c ================ */
+/*
+SHA-1 in C
+By Steve Reid <steve@edmweb.com>
+100% Public Domain
+*/
+
+so I think it should be okay to use in an MIT license - I'm new to the open source licensing
+
+
+Thanks Ken Yerex
+
 ### htmltty
 htmltty is the SPA served up by htmlttyd. It can also be bought up by modifying the tlogin.html with the appropriate ip:port. It was originally made to run 
 with my sm32 server but has been modified to include a vt100 terminal emulation.
