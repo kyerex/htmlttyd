@@ -100,13 +100,8 @@ int deserialize(byt *bp,uint32_t len)
 			pc2_init->lenl=sizeof (*pc2_init);
 			pc2_init->type=(swrd)l;
 			if (get_str(&bp,&len,&bp2,&len2)) return 1;
-			memcpy(pc2_init->username,bp2,len2);
-			if (get_str(&bp,&len,&bp2,&len2)) return 1;
-			memcpy(pc2_init->password,bp2,len2);
-			if (get_str(&bp,&len,&bp2,&len2)) return 1;
-			memcpy(pc2_init->idir,bp2,len2);
-			if (get_str(&bp,&len,&bp2,&len2)) return 1;
-			memcpy(pc2_init->config,bp,len);
+			if (len2+1 > sizeof(pc2_init->info)) return 1;
+			memcpy(pc2_init->info,bp2,len2);
 			lp=&pc2_init->lenl;
 			break;
 

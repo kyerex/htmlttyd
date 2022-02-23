@@ -1,12 +1,11 @@
 
 
 
-function init(info1,info2,idir,config,ip_port,typestr)
+function init(info,ip_port)
 {
     T_G.shutdown=function (){
         self.close();
     }
-	T_G.CallType=typestr;
 	T_G.timer=null;
 	T_G.real_topw=self;
 	T_G.connected = 0; //1 after sucessfull login 2 after 1st non login packet
@@ -42,10 +41,7 @@ function init(info1,info2,idir,config,ip_port,typestr)
 	T_G.sock.onopen = function (e){
 		p = new Pc2Packet("");
     	p.type=p.pc2init;
-    	p.username=info1;
-    	p.password=info2;
-    	p.idir=idir;  
-		p.uinfo=config;
+    	p.info=info;
     	p_serial(p);
     };
     

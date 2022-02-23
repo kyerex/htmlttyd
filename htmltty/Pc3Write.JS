@@ -1090,7 +1090,6 @@ function window_info()
     s=s+","+this.fs_height[this.fs];
     s=s+","+this.win0_cols;
     s=s+","+this.win0_rows;
-    s=s+","+T_G.CallType;
     s=s+"\r";
     this.load_rbuf(s); //this wipes unread data ('CI')
 }

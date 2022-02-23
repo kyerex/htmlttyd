@@ -43,12 +43,7 @@ struct pc2_short_iop {
 struct pc2_initpacket {
     uint32_t lenl;
     swrd type;
-	swrd crc;
-	uint32_t dsz;
-    char username[32];
-    char password[32];
-    char idir[256];   
-    char config[32];
+    char info[256];
 };
 
 struct pc2_loginres {

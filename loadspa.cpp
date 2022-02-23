@@ -35,6 +35,10 @@ int main(int argc,char *argv[])
     n=write(cfd,buf,strlen(buf));
     strcpy(buf,"\t.globl\thtty_gif_start\n");
     n=write(cfd,buf,strlen(buf));
+    strcpy(buf,"\t.globl\tnw_html_len\n");
+    n=write(cfd,buf,strlen(buf));
+    strcpy(buf,"\t.globl\tnw_html_start\n");
+    n=write(cfd,buf,strlen(buf));
 
     strcpy(buf,"\t.data\n");
     n=write(cfd,buf,strlen(buf));
@@ -70,6 +74,23 @@ int main(int argc,char *argv[])
 
     write_array("htty_gif_start",hbp,cfd,len);
     free(hbp);
+
+    len=getfile("htmltty/nw.html",&hbp);
+    if (hbp == NULL) {
+        printf("Could not load SPA favicon from htty.gif\n");
+        abort(); //image load failed
+    }
+    strcpy(buf,"\t.align 4\n");
+    n=write(cfd,buf,strlen(buf));
+    strcpy(buf,"nw_html_len:\n");
+    n=write(cfd,buf,strlen(buf));
+
+    sprintf(buf,"\t.long\t%u\n\n",len);
+    n=write(cfd,buf,strlen(buf));
+
+    write_array("nw_html_start",hbp,cfd,len);
+    free(hbp);
+
     close(cfd);
 
     return 0;

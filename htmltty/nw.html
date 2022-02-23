@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>New Window</title>
+
+<script>
+function new_window(h)
+{
+   let s="resizable, top="+self.screenY+", left="+self.screenX
+   s=s+", width="+self.outerWidth+", height="+outerHeight+", scrollbars"
+   let neww=top.open("about:blank","",s);
+   if (neww == null) {
+        return false;
+   }
+   neww.document.open();
+   neww.document.write(h);
+   neww.document.close();
+   return true;
+}
+
+function getspa()
+{
+let sock;
+
+//                           012345678901234567890123456789
+	sock = new WebSocket("ws://127.0.0.1:5001/"              );
+
+	sock.onclose = function(e) {
+		self.close();
+	};
+
+	sock.onopen = function (e){
+		sock.send(btoa("12345,!!SPA!!,")+"*");
+    };
+    
+  sock.onmessage=function (e){
+		new_window(e.data);
+		sock.close();
+	};
+} 
+</script>
+</head>
+
+<body >
+<h1>Continue to logon</h1>
+<button onclick="getspa()">continue</button>
+
+</body>
+</html>

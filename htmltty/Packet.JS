@@ -130,7 +130,7 @@ function p_serial(p)
 {
     switch(p.type) {
         case p.pc2init:
-            var ps=""+p.type+","+p.username+","+p.password+","+p.idir+","+p.uinfo+",";
+            var ps=""+p.type+","+p.info+",";
             break;
             
         case p.pc2openres:

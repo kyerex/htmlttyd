@@ -81,7 +81,7 @@ int HDCon(char *argv0,Sock2 *s)
     if (0 == getsockname(s->fd,sa,&len)) {
         if (sa->sa_family == AF_INET) {
             memset(my_address,' ',32);
-            sprintf(my_address,",\"%u.%u.%u.%u:%u\",",(uint8_t)sa->sa_data[2],(uint8_t)sa->sa_data[3],
+            sprintf(my_address,",\"%u.%u.%u.%u:%u\"",(uint8_t)sa->sa_data[2],(uint8_t)sa->sa_data[3],
                 (uint8_t)sa->sa_data[4],(uint8_t)sa->sa_data[5],(uint8_t)sa->sa_data[0]*256 + (uint8_t)sa->sa_data[1]);
             my_address[strlen(my_address)]=' ';
         }
@@ -113,6 +113,25 @@ int HDCon(char *argv0,Sock2 *s)
             bp=strstr(h,",\"127.0.0.1:5001");
             if (bp != NULL && my_address[0] !='\0') {
                 memcpy(bp,my_address,32);
+            }
+            sprintf(tbuf,
+"HTTP/1.1 200 OK\r\n\
+Content-Type: text/html; charset=utf-8\r\n\
+Cache-Control: no-cache\r\n\
+Content-Length: %u\r\n\r\n",len);
+            s->put_data(tbuf,strlen(tbuf));
+            s->put_data(h,len);
+            sleep(2);
+            s->close();
+            return 0; //child exit
+        }
+        if (memcmp(s->hsbuf,"GET /NW HTTP/1.1\r\n",18) == 0) {
+            len=nw_html_len;
+            h=(char *)alloca(len);
+            memcpy(h,&nw_html_start,len);
+            bp=strstr(h,"127.0.0.1:5001");
+            if (bp != NULL && my_address[0] !='\0') {
+                memcpy(bp,&my_address[2],30);
             }
             sprintf(tbuf,
 "HTTP/1.1 200 OK\r\n\
@@ -174,8 +193,23 @@ bad_init:
     if (pi->type != pc2init) {
         goto bad_init;
     }
+    if (memcmp("!!SPA!!",pi->info,7) == 0) {
+        len=spa_html_len;
+        h=(char *)alloca(len);
+        memcpy(h,&spa_html_start,len);
+        bp=strstr(h,",\"127.0.0.1:5001");
+        if (bp != NULL && my_address[0] !='\0') {
+            memcpy(bp,my_address,32);
+        }
+        if (Sock2::READY != s->put(h,len) ){
+            slog->abort((char *)"Error writing to websocket");
+        }
+        sleep(2);
+        s->close();
+        return 0;
+    }
     // we can be pretty sure we have a valid pc2_initpacket
-    sprintf(buf,"Connection: %s",pi->username); // username is now info1
+    sprintf(buf,"Connection: %s",pi->info); //info
     slog->info(buf);
 
     lr=(struct pc2_loginres*)tbuf;
@@ -185,7 +219,8 @@ bad_init:
     lr->keynum=0;
     lr->os_error=0;
     lr->mode=0; //not sm32 mode and vt100 keyboard
-    if (strcmp(pi->password,"xterm") == 0) {
+    //if last 5 chars of info string are xterm
+    if (strcmp(&pi->info[strlen(pi->info)-5],"xterm") == 0) {
         lr->mode=2; // not sm32 mode and xterm keyboard
     }
 
