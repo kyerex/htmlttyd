@@ -91,7 +91,8 @@ int HDCon(char *argv0,Sock2 *s)
     }
     
     if (Sock2::READY != s->waitsock(120)) {
-        slog->info("No Handshake Received - exiting");
+        // slog->info("No Handshake Received - exiting");
+        // browser extra connection
         s->close();
         return 0;
     }
@@ -100,7 +101,6 @@ int HDCon(char *argv0,Sock2 *s)
 
     if (s->st == NOTDEFINED) {
         //slog->info("Invalid HandShake");
-        //always browser with extra connection
         s->close();
         return 0;
     }
